@@ -19,7 +19,12 @@ function App() {
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
   const [operations, setOperations] = useState<string[]>([]);
   const [currentClosest, setCurrentClosest] = useState<number>(0);
+  
+  // New States for continuous play
+  const [totalScore, setTotalScore] = useState<number>(0);
+  const [roundCountdown, setRoundCountdown] = useState<number>(10);
 
+  // Timer for PLAYING state
   useEffect(() => {
     let timer: number;
     if (gameState === 'PLAYING' && timeLeft > 0) {
@@ -32,7 +37,20 @@ function App() {
     return () => clearInterval(timer);
   }, [gameState, timeLeft]);
 
-  const startGame = () => {
+  // Timer for GAMEOVER state (between rounds)
+  useEffect(() => {
+    let timer: number;
+    if (gameState === 'GAMEOVER' && roundCountdown > 0) {
+      timer = window.setInterval(() => {
+        setRoundCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (gameState === 'GAMEOVER' && roundCountdown === 0) {
+      startNextRound();
+    }
+    return () => clearInterval(timer);
+  }, [gameState, roundCountdown]);
+
+  const startNextRound = () => {
     const timeLimits = { EASY: 90, MEDIUM: 60, HARD: 30 };
     setTimeLeft(timeLimits[difficulty]);
     
@@ -60,8 +78,6 @@ function App() {
     setOperations([]);
     setSelectedNumId(null);
     setSelectedOperator(null);
-    setCurrentClosest(Math.abs(newNumbers[0].value - generatedTarget)); // Init with something
-    setGameState('PLAYING');
 
     // Update closest for initially given numbers
     let bestDist = Infinity;
@@ -74,9 +90,28 @@ function App() {
       }
     });
     setCurrentClosest(bestNum);
+    setGameState('PLAYING');
   };
 
-  const endGame = () => {
+  const startGame = () => {
+    setTotalScore(0);
+    startNextRound();
+  };
+
+  const getScore = (closestValue: number = currentClosest) => {
+    const diff = Math.abs(closestValue - targetNumber);
+    if (diff === 0) return { points: 10, msg: "Mükemmel! Tam İsabet!" };
+    if (diff === 1) return { points: 7, msg: "Çok Yakın! (Fark: 1)" };
+    if (diff === 2) return { points: 5, msg: "Yaklaştın! (Fark: 2)" };
+    if (diff === 3) return { points: 3, msg: "Ucundan Kaçtı (Fark: 3)" };
+    return { points: 0, msg: `Maalesef Başarısız (Fark: ${diff})` };
+  };
+
+  const endGame = (finalClosest?: number) => {
+    const closest = finalClosest !== undefined ? finalClosest : currentClosest;
+    const { points } = getScore(closest);
+    setTotalScore(prev => prev + points);
+    setRoundCountdown(10); // Start 10s countdown for next round
     setGameState('GAMEOVER');
   };
 
@@ -137,17 +172,8 @@ function App() {
 
     if (result === targetNumber) {
       setCurrentClosest(result);
-      endGame();
+      endGame(result);
     }
-  };
-
-  const getScore = () => {
-    const diff = Math.abs(currentClosest - targetNumber);
-    if (diff === 0) return { points: 10, msg: "Mükemmel! Tam İsabet!" };
-    if (diff === 1) return { points: 7, msg: "Çok Yakın! (Fark: 1)" };
-    if (diff === 2) return { points: 5, msg: "Yaklaştın! (Fark: 2)" };
-    if (diff === 3) return { points: 3, msg: "Ucundan Kaçtı (Fark: 3)" };
-    return { points: 0, msg: `Maalesef Başarısız (Fark: ${diff})` };
   };
 
   const undoLast = () => {
@@ -208,8 +234,11 @@ function App() {
               <div className="target-label">Hedef Sayı</div>
               <div className="target-number">{targetNumber}</div>
             </div>
-            <div>
-               <button className="btn btn-danger" onClick={endGame}>Bitir</button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+               <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--accent-color)' }}>
+                 Skor: {totalScore}
+               </div>
+               <button className="btn btn-danger" onClick={() => endGame()}>Bitir</button>
             </div>
           </div>
 
@@ -261,7 +290,7 @@ function App() {
 
       {gameState === 'GAMEOVER' && (
         <div className="glass-panel result-screen">
-          <h2 className="result-title">Oyun Bitti!</h2>
+          <h2 className="result-title">Tur Bitti!</h2>
           
           <div className="result-stats">
             <div className="stat-row">
@@ -271,6 +300,10 @@ function App() {
             <div className="stat-row">
               <span>Ulaşılan En Yakın Sayı:</span>
               <strong>{currentClosest}</strong>
+            </div>
+            <div className="stat-row" style={{ marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+              <span>Toplam Skor:</span>
+              <strong style={{ color: 'var(--accent-color)' }}>{totalScore}</strong>
             </div>
           </div>
 
@@ -283,7 +316,15 @@ function App() {
             </div>
           </div>
 
-          <button className="btn" onClick={() => setGameState('SETUP')}>Tekrar Oyna</button>
+          <div style={{ marginTop: '2rem' }}>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              Yeni tur <strong>{roundCountdown}</strong> saniye içinde başlıyor...
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button className="btn" onClick={startNextRound}>Hemen Geç</button>
+              <button className="btn btn-danger" onClick={() => setGameState('SETUP')}>Ana Menüye Dön</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
