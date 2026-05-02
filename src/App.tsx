@@ -9,6 +9,12 @@ interface NumberItem {
   used: boolean;
 }
 
+interface GameHistoryState {
+  numbers: NumberItem[];
+  operations: string[];
+  currentClosest: number;
+}
+
 function App() {
   const [gameState, setGameState] = useState<GameState>('SETUP');
   const [difficulty, setDifficulty] = useState<Difficulty>('EASY');
@@ -19,6 +25,7 @@ function App() {
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
   const [operations, setOperations] = useState<string[]>([]);
   const [currentClosest, setCurrentClosest] = useState<number>(0);
+  const [history, setHistory] = useState<GameHistoryState[]>([]);
   
   // New States for continuous play
   const [totalScore, setTotalScore] = useState<number>(0);
@@ -78,6 +85,7 @@ function App() {
     setOperations([]);
     setSelectedNumId(null);
     setSelectedOperator(null);
+    setHistory([]);
 
     // Update closest for initially given numbers
     let bestDist = Infinity;
@@ -150,6 +158,13 @@ function App() {
         break;
     }
 
+    // Save history state before changing anything
+    setHistory(prev => [...prev, {
+      numbers: [...numbers],
+      operations: [...operations],
+      currentClosest: currentClosest
+    }]);
+
     const newId = `res-${Date.now()}`;
     const newNum: NumberItem = { id: newId, value: result, used: false };
     
@@ -176,28 +191,42 @@ function App() {
     }
   };
 
-  const undoLast = () => {
-    setNumbers(prev => {
-        const original = prev.filter(n => !n.id.startsWith('res-')).map(n => ({...n, used: false}));
-        
-        // Recalculate closest for initially given numbers
-        let bestDist = Infinity;
-        let bestNum = 0;
-        original.forEach(n => {
-          const dist = Math.abs(n.value - targetNumber);
-          if (dist < bestDist) {
-            bestDist = dist;
-            bestNum = n.value;
-          }
-        });
-        setCurrentClosest(bestNum);
+  const undoLastStep = () => {
+    // If user selected a number or operator but hasn't done the math yet, just cancel the selection
+    if (selectedNumId || selectedOperator) {
+      setSelectedNumId(null);
+      setSelectedOperator(null);
+      return;
+    }
 
-        return original;
-    });
-    setOperations([]);
+    if (history.length === 0) return; // Nothing to undo
+
+    const previousState = history[history.length - 1];
+    setNumbers(previousState.numbers);
+    setOperations(previousState.operations);
+    setCurrentClosest(previousState.currentClosest);
+    
+    // Remove the last state from history
+    setHistory(prev => prev.slice(0, -1));
+  };
+
+  const resetAll = () => {
+    if (history.length === 0) {
+      setSelectedNumId(null);
+      setSelectedOperator(null);
+      return;
+    }
+    
+    // The first item in history is the state before any operation was made
+    const initialState = history[0];
+    setNumbers(initialState.numbers);
+    setOperations(initialState.operations);
+    setCurrentClosest(initialState.currentClosest);
+    
+    setHistory([]);
     setSelectedNumId(null);
     setSelectedOperator(null);
-  }
+  };
 
   return (
     <div className="app-container">
@@ -283,7 +312,21 @@ function App() {
           </div>
 
           <div className="controls">
-            <button className="btn" onClick={undoLast}>İşlemleri Sıfırla</button>
+            <button 
+              className="btn" 
+              onClick={undoLastStep} 
+              disabled={history.length === 0 && !selectedNumId && !selectedOperator}
+            >
+              Geri Al
+            </button>
+            <button 
+              className="btn btn-danger" 
+              onClick={resetAll} 
+              disabled={history.length === 0}
+              style={{ background: 'transparent', border: '1px solid var(--danger-color)', color: 'var(--danger-color)' }}
+            >
+              Tümünü Sıfırla
+            </button>
           </div>
         </div>
       )}
