@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-type GameState = 'SETUP' | 'PLAYING' | 'GAMEOVER';
+type GameState = 'LOGIN' | 'SETUP' | 'PLAYING' | 'GAMEOVER';
 type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 
 interface NumberItem {
@@ -16,7 +16,8 @@ interface GameHistoryState {
 }
 
 function App() {
-  const [gameState, setGameState] = useState<GameState>('SETUP');
+  const [gameState, setGameState] = useState<GameState>('LOGIN');
+  const [playerName, setPlayerName] = useState<string>('');
   const [difficulty, setDifficulty] = useState<Difficulty>('EASY');
   const [timeLeft, setTimeLeft] = useState<number>(90);
   const [targetNumber, setTargetNumber] = useState<number>(0);
@@ -230,9 +231,36 @@ function App() {
 
   return (
     <div className="app-container">
+      {gameState === 'LOGIN' && (
+        <div className="glass-panel" style={{ textAlign: 'center' }}>
+          <h1>Bir Kelime Bir İşlem</h1>
+          <p className="subtitle">Başlamak için lütfen isminizi girin</p>
+          
+          <input 
+            type="text" 
+            className="name-input"
+            placeholder="İsminiz..." 
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && playerName.trim() !== '' && setGameState('SETUP')}
+            autoFocus
+          />
+          
+          <div style={{ marginTop: '2rem' }}>
+            <button 
+              className="btn" 
+              onClick={() => setGameState('SETUP')}
+              disabled={playerName.trim() === ''}
+            >
+              İlerle
+            </button>
+          </div>
+        </div>
+      )}
+
       {gameState === 'SETUP' && (
         <div className="glass-panel">
-          <h1>Bir Kelime Bir İşlem</h1>
+          <h1>Hoş Geldin, {playerName}!</h1>
           <p className="subtitle">Hedef sayıya en az farkla ulaşmaya çalışın!</p>
           
           <div className="difficulty-selector">
@@ -265,7 +293,7 @@ function App() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--accent-color)' }}>
-                 Skor: {totalScore}
+                 {playerName} | Skor: {totalScore}
                </div>
                <button className="btn btn-danger" onClick={() => endGame()}>Bitir</button>
             </div>
@@ -345,7 +373,7 @@ function App() {
               <strong>{currentClosest}</strong>
             </div>
             <div className="stat-row" style={{ marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
-              <span>Toplam Skor:</span>
+              <span>{playerName}'in Toplam Skoru:</span>
               <strong style={{ color: 'var(--accent-color)' }}>{totalScore}</strong>
             </div>
           </div>

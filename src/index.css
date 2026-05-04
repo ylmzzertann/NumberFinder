@@ -67,6 +67,26 @@ h1 {
   margin-bottom: 2rem;
 }
 
+.name-input {
+  width: 100%;
+  max-width: 300px;
+  padding: 1rem;
+  font-size: 1.1rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+
+.name-input:focus {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
 .btn {
   background: var(--accent-color);
   color: white;
